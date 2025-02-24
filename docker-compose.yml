@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web-service:
+    build:
+      context: ./web-service
+    container_name: bhanu-bcd26-web-service
+    ports:
+      - "8083:3000"
+    depends_on:
+      - worker-service
+
+  worker-service:
+    build:
+      context: ./worker-service
+    container_name: bhanu-bcd26-worker-service
+    ports:
+      - "4001:4001"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/todo_db
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo
+    container_name: bhanu-bcd26-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
