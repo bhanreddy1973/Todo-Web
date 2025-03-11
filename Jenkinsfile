@@ -9,9 +9,10 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/bhanureddy1973/Todo-Web.git' // Replace with your actual repo
+                deleteDir() // Clean workspace
+                git branch: 'main', url: 'https://github.com/bhanreddy1973/Todo-Web.git'
             }
         }
 
