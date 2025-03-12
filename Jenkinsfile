@@ -27,7 +27,7 @@ pipeline {
         stage('Build') {
             steps {
                 // Use explicit path for docker-compose build, using bat
-                bat "${DOCKER_COMPOSE_PATH} build"
+                bat "\"${DOCKER_COMPOSE_PATH} build"
             }
         }
 
