@@ -6,8 +6,7 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        // Path to Docker Compose on Windows
-        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe'
+        DOCKER_COMPOSE_PATH = '"C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe"'
     }
 
     stages {
@@ -27,7 +26,7 @@ pipeline {
         // Stage 2: Build Docker Images
         stage('Build') {
             steps {
-                // Use the correct path for Docker Compose on Windows
+                // Use explicit path for docker-compose build
                 sh "${DOCKER_COMPOSE_PATH} build"
             }
         }
@@ -58,10 +57,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Cleanup previous deployment
+                    // Cleanup previous deployment and start fresh environment
                     sh "${DOCKER_COMPOSE_PATH} down || true"
-                    
-                    // Create fresh environment
                     sh "${DOCKER_COMPOSE_PATH} up -d"
                 }
             }
@@ -73,7 +70,6 @@ pipeline {
             echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
-            // Cleanup Docker containers on failure
             script {
                 sh "${DOCKER_COMPOSE_PATH} down || true"
             }
