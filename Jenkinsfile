@@ -24,7 +24,7 @@ pipeline {
                 retry(3) {
                     git branch: 'main', 
                          url: 'https://github.com/bhanreddy1973/Todo-Web.git',
-                         timeout: 2 // Minutes
+                        //  timeout: 2 // Minutes
                 }
             }
         }
