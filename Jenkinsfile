@@ -2,38 +2,42 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS_20' // Use the NodeJS version configured in Jenkins (v20.x)
+        nodejs 'NodeJS_20' // Requires NodeJS plugin configured in Jenkins
     }
 
     environment {
+        // SonarQube Configuration
+        SONARQUBE_SERVER = 'SonarQube'
+        SONARQUBE_TOKEN = credentials('sonarqube-token') // Store token in Jenkins credentials
+        
         // Docker Configuration
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-
-        // SonarQube Configuration
-        SONARQUBE_SERVER = 'SonarQube'
-        SONARQUBE_TOKEN = 'squ_b0c4b672e840ebe2d14a74558207d673deda73ac'
     }
 
     stages {
-        // Stage 1: Checkout Code
+        // Stage 1: Checkout with retry
         stage('Checkout') {
             steps {
-                deleteDir() // Clean workspace
-                git branch: 'main', url: 'https://github.com/bhanreddy1973/Todo-Web.git'
+                deleteDir()
+                retry(3) {
+                    git branch: 'main', 
+                         url: 'https://github.com/bhanreddy1973/Todo-Web.git',
+                         timeout: 2 // Minutes
+                }
             }
         }
 
-        // Stage 2: Install Dependencies & Test
+        // Stage 2: Build & Test with Node.js 20
         stage('Build & Test') {
             parallel {
                 stage('Frontend') {
                     steps {
                         dir('frontend') {
-                            nodejs(nodeJSInstallationName: 'NodeJS_20') { // Use Node.js v20.x configured in Jenkins
-                                sh 'npm install'
-                                sh 'npm run test -- --watchAll=false'
+                            nodejs(nodeJSInstallationName: 'NodeJS_20') {
+                                sh 'npm ci --no-audit'
+                                sh 'npm run test -- --watchAll=false --coverage'
                             }
                         }
                     }
@@ -41,9 +45,9 @@ pipeline {
                 stage('Backend') {
                     steps {
                         dir('backend') {
-                            nodejs(nodeJSInstallationName: 'NodeJS_20') { // Use Node.js v20.x configured in Jenkins
-                                sh 'npm install'
-                                sh 'npm test'
+                            nodejs(nodeJSInstallationName: 'NodeJS_20') {
+                                sh 'npm ci --no-audit'
+                                sh 'npm test -- --coverage'
                             }
                         }
                     }
@@ -51,59 +55,60 @@ pipeline {
             }
         }
 
-        // Stage 3: SonarQube Analysis
-        stage('Code Quality Check') {
+        // Stage 3: SonarQube Analysis with security
+        stage('Code Quality') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     script {
                         dir('frontend') {
-                            sh '''
+                            sh """
                             sonar-scanner \
                             -Dsonar.projectKey=todo-web \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.login=${SONARQUBE_TOKEN} \
                             -Dsonar.sources=src \
                             -Dsonar.tests=src \
-                            -Dsonar.test.inclusions=**/*.test.js
-                            '''
+                            -Dsonar.test.inclusions=**/*.test.js \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            """
                         }
-
                         dir('backend') {
-                            sh '''
+                            sh """
                             sonar-scanner \
                             -Dsonar.projectKey=todo-api \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.login=${SONARQUBE_TOKEN} \
                             -Dsonar.sources=src \
-                            -Dsonar.tests=test
-                            '''
+                            -Dsonar.tests=test \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                            """
                         }
                     }
                 }
             }
         }
 
-        // Stage 4: Docker Build
+        // Stage 4: Docker Build with cache
         stage('Docker Build') {
             parallel {
                 stage('Frontend') {
                     steps {
                         dir('frontend') {
-                            sh "docker build -t ${DOCKER_IMAGE_FRONTEND} ."
+                            sh "docker build --pull --cache-from ${DOCKER_IMAGE_FRONTEND} -t ${DOCKER_IMAGE_FRONTEND} ."
                         }
                     }
                 }
                 stage('Backend') {
                     steps {
                         dir('backend') {
-                            sh "docker build -t ${DOCKER_IMAGE_BACKEND} ."
+                            sh "docker build --pull --cache-from ${DOCKER_IMAGE_BACKEND} -t ${DOCKER_IMAGE_BACKEND} ."
                         }
                     }
                 }
             }
         }
 
-        // Stage 5: Docker Push
+        // Stage 5: Secure Docker Push
         stage('Docker Push') {
             steps {
                 script {
@@ -112,36 +117,47 @@ pipeline {
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
-                        sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
-                        sh "docker push ${DOCKER_IMAGE_FRONTEND}"
-                        sh "docker push ${DOCKER_IMAGE_BACKEND}"
+                        sh """
+                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                        docker push ${DOCKER_IMAGE_FRONTEND}
+                        docker push ${DOCKER_IMAGE_BACKEND}
+                        """
                     }
                 }
             }
         }
 
-        // Stage 6: Deployment
+        // Stage 6: Safe Deployment
         stage('Deploy') {
             steps {
                 script {
-                    sh 'docker network create todo-net || true'
-
-                    // MongoDB Deployment
-                    sh "docker run -d --name mongodb --network todo-net \
-                       -v mongo_data:/data/db \
-                       ${DOCKER_IMAGE_MONGO}"
-
-                    // Backend Deployment
-                    sh "docker run -d --name backend --network todo-net \
-                       -p 5000:5000 \
-                       -e MONGO_URI=mongodb://mongodb:27017/todo \
-                       ${DOCKER_IMAGE_BACKEND}"
-
-                    // Frontend Deployment
-                    sh "docker run -d --name frontend --network todo-net \
-                       -p 3000:3000 \
-                       -e REACT_APP_API_URL=http://localhost:5000 \
-                       ${DOCKER_IMAGE_FRONTEND}"
+                    // Cleanup previous deployment
+                    sh 'docker stop frontend backend mongodb || true'
+                    sh 'docker rm frontend backend mongodb || true'
+                    sh 'docker network rm todo-net || true'
+                    
+                    // Create fresh environment
+                    sh 'docker network create todo-net'
+                    sh """
+                    docker run -d --name mongodb --network todo-net \
+                        -v mongo_data:/data/db \
+                        --restart unless-stopped \
+                        ${DOCKER_IMAGE_MONGO}
+                    """
+                    sh """
+                    docker run -d --name backend --network todo-net \
+                        -p 5000:5000 \
+                        -e MONGO_URI=mongodb://mongodb:27017/todo \
+                        --restart unless-stopped \
+                        ${DOCKER_IMAGE_BACKEND}
+                    """
+                    sh """
+                    docker run -d --name frontend --network todo-net \
+                        -p 3000:3000 \
+                        -e REACT_APP_API_URL=http://backend:5000 \
+                        --restart unless-stopped \
+                        ${DOCKER_IMAGE_FRONTEND}
+                    """
                 }
             }
         }
@@ -149,13 +165,12 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline execution completed. Access application at http://localhost:3000'
+            echo 'Pipeline completed. Access: http://localhost:3000'
+            junit '**/test-results.xml' // Add test reporting
+            cobertura autoUpdateHistory: true, coberturaReportFile: '**/coverage/cobertura-coverage.xml'
         }
-        cleanup {
-            script {
-                sh 'docker stop frontend backend mongodb || true'
-                sh 'docker rm frontend backend mongodb || true'
-            }
+        failure {
+            emailext body: 'Pipeline failed: ${BUILD_URL}', subject: 'Pipeline Failed: ${JOB_NAME}', to: 'team@example.com'
         }
     }
 }
