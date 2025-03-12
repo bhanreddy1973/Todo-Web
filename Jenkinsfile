@@ -6,7 +6,8 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe'
+        // Short path for docker-compose.exe (adjust if necessary)
+        DOCKER_COMPOSE_PATH = 'C:\Program Files\Docker\Docker\resources\bin\compose-bridge.exe'
     }
 
     stages {
@@ -16,20 +17,19 @@ pipeline {
                 deleteDir()
                 retry(5) {
                     timeout(time: 5, unit: 'MINUTES') {
-                        git branch: 'main',
-                            url: 'https://github.com/bhanreddy1973/Todo-Web.git'
+                        git branch: 'main', 
+                             url: 'https://github.com/bhanreddy1973/Todo-Web.git'
                     }
                 }
             }
         }
 
         // Stage 2: Build Docker Images
-          stage('Build') {
+        stage('Build') {
             steps {
-                // Use explicit path for docker-compose build, using bat
+                // Use bat for Windows compatibility
                 bat """
-                @echo off
-                call %DOCKER_COMPOSE_PATH% build
+                call ${DOCKER_COMPOSE_PATH} build
                 """
             }
         }
@@ -44,11 +44,11 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                        docker tag %DOCKER_IMAGE_FRONTEND% %DOCKER_IMAGE_FRONTEND%:latest
-                        docker tag %DOCKER_IMAGE_BACKEND% %DOCKER_IMAGE_BACKEND%:latest
-                        docker push %DOCKER_IMAGE_FRONTEND%:latest
-                        docker push %DOCKER_IMAGE_BACKEND%:latest
+                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                        docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
+                        docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
+                        docker push ${DOCKER_IMAGE_FRONTEND}:latest
+                        docker push ${DOCKER_IMAGE_BACKEND}:latest
                         docker logout
                         """
                     }
@@ -60,9 +60,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Cleanup previous deployment and start fresh environment, using bat
-                    bat "${DOCKER_COMPOSE_PATH} down || true"
-                    bat "${DOCKER_COMPOSE_PATH} up -d"
+                    // Cleanup previous deployment and start fresh environment
+                    bat """
+                    call ${DOCKER_COMPOSE_PATH} down || true
+                    call ${DOCKER_COMPOSE_PATH} up -d
+                    """
                 }
             }
         }
@@ -74,7 +76,9 @@ pipeline {
         }
         cleanup {
             script {
-                bat "${DOCKER_COMPOSE_PATH} down || true"
+                bat """
+                call ${DOCKER_COMPOSE_PATH} down || true
+                """
             }
         }
     }
