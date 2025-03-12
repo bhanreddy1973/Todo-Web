@@ -2,10 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // SonarQube Configuration
-        SONARQUBE_SERVER = 'SonarQube'
-        SONARQUBE_TOKEN = credentials('sonarqube-token') // Store token in Jenkins credentials
-        
         // Docker Configuration
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
@@ -21,23 +17,10 @@ pipeline {
             }
         }
 
-        // Stage 2: Build & Deploy Docker Images
-        stage('Build & Deploy') {
-            parallel {
-                stage('Frontend') {
-                    steps {
-                        dir('frontend') {
-                            sh "docker build -t ${DOCKER_IMAGE_FRONTEND} ."
-                        }
-                    }
-                }
-                stage('Backend') {
-                    steps {
-                        dir('backend') {
-                            sh "docker build -t ${DOCKER_IMAGE_BACKEND} ."
-                        }
-                    }
-                }
+        // Stage 2: Build Docker Images
+        stage('Build') {
+            steps {
+                sh 'docker-compose build'
             }
         }
 
@@ -54,6 +37,7 @@ pipeline {
                         echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
                         docker push ${DOCKER_IMAGE_FRONTEND}
                         docker push ${DOCKER_IMAGE_BACKEND}
+                        docker logout
                         """
                     }
                 }
@@ -65,32 +49,10 @@ pipeline {
             steps {
                 script {
                     // Cleanup previous deployment
-                    sh 'docker stop frontend backend mongodb || true'
-                    sh 'docker rm frontend backend mongodb || true'
-                    sh 'docker network rm todo-net || true'
+                    sh 'docker-compose down || true'
                     
                     // Create fresh environment
-                    sh 'docker network create todo-net'
-                    sh """
-                    docker run -d --name mongodb --network todo-net \
-                        -v mongo_data:/data/db \
-                        --restart unless-stopped \
-                        ${DOCKER_IMAGE_MONGO}
-                    """
-                    sh """
-                    docker run -d --name backend --network todo-net \
-                        -p 5000:5000 \
-                        -e MONGO_URI=mongodb://mongodb:27017/todo \
-                        --restart unless-stopped \
-                        ${DOCKER_IMAGE_BACKEND}
-                    """
-                    sh """
-                    docker run -d --name frontend --network todo-net \
-                        -p 3000:3000 \
-                        -e REACT_APP_API_URL=http://backend:5000 \
-                        --restart unless-stopped \
-                        ${DOCKER_IMAGE_FRONTEND}
-                    """
+                    sh 'docker-compose up -d'
                 }
             }
         }
@@ -98,13 +60,12 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline completed. Access application at http://localhost:3000'
+            echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
             // Cleanup Docker containers on failure
             script {
-                sh 'docker stop frontend backend mongodb || true'
-                sh 'docker rm frontend backend mongodb || true'
+                sh 'docker-compose down || true'
             }
         }
     }
