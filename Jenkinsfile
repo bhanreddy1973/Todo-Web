@@ -24,10 +24,13 @@ pipeline {
         }
 
         // Stage 2: Build Docker Images
-        stage('Build') {
+          stage('Build') {
             steps {
                 // Use explicit path for docker-compose build, using bat
-                bat "\"${DOCKER_COMPOSE_PATH} build"
+                bat """
+                @echo off
+                call %DOCKER_COMPOSE_PATH% build
+                """
             }
         }
 
