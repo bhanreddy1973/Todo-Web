@@ -30,7 +30,8 @@ pipeline {
             steps {
                 // Use bat for Windows compatibility
                 bat """
-                call ${DOCKER_COMPOSE_PATH} build
+                @echo off
+                call "%DOCKER_COMPOSE_PATH%" build
                 """
             }
         }
@@ -45,7 +46,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         bat """
-                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
                         docker push ${DOCKER_IMAGE_FRONTEND}:latest
@@ -63,8 +64,9 @@ pipeline {
                 script {
                     // Cleanup previous deployment and start fresh environment
                     bat """
-                    call ${DOCKER_COMPOSE_PATH} down || true
-                    call ${DOCKER_COMPOSE_PATH} up -d
+                    @echo off
+                    call "%DOCKER_COMPOSE_PATH%" down || true
+                    call "%DOCKER_COMPOSE_PATH%" up -d
                     """
                 }
             }
@@ -78,7 +80,8 @@ pipeline {
         cleanup {
             script {
                 bat """
-                call ${DOCKER_COMPOSE_PATH} down || true
+                @echo off
+                call "%DOCKER_COMPOSE_PATH%" down || true
                 """
             }
         }
