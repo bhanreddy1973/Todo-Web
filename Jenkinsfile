@@ -25,7 +25,7 @@ pipeline {
         // Stage 2: Build Docker Images
         stage('Build') {
             steps {
-                sh 'docker-compose build'
+                sh "/usr/local/bin/docker-compose build" // Use absolute path if necessary
             }
         }
 
@@ -40,8 +40,10 @@ pipeline {
                     )]) {
                         sh """
                         echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
-                        docker push ${DOCKER_IMAGE_FRONTEND}
-                        docker push ${DOCKER_IMAGE_BACKEND}
+                        docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
+                        docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
+                        docker push ${DOCKER_IMAGE_FRONTEND}:latest
+                        docker push ${DOCKER_IMAGE_BACKEND}:latest
                         docker logout
                         """
                     }
