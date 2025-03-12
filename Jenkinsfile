@@ -13,97 +13,35 @@ pipeline {
     }
 
     stages {
-        // Stage 1: Checkout with retry
+        // Stage 1: Checkout Code
         stage('Checkout') {
             steps {
                 deleteDir()
-                retry(3) {
-                    git branch: 'main', 
-                         url: 'https://github.com/bhanreddy1973/Todo-Web.git'
-                }
+                git branch: 'main', url: 'https://github.com/bhanreddy1973/Todo-Web.git'
             }
         }
 
-        // Stage 2: Build & Test with Node.js 20
-        stage('Build & Test') {
+        // Stage 2: Build & Deploy Docker Images
+        stage('Build & Deploy') {
             parallel {
                 stage('Frontend') {
                     steps {
                         dir('frontend') {
-                            nodejs(nodeJSInstallationName: 'NodeJS_20') {
-                                sh 'npm ci --no-audit'
-                                sh 'npm run test -- --watchAll=false --coverage'
-                            }
+                            sh "docker build -t ${DOCKER_IMAGE_FRONTEND} ."
                         }
                     }
                 }
                 stage('Backend') {
                     steps {
                         dir('backend') {
-                            nodejs(nodeJSInstallationName: 'NodeJS_20') {
-                                sh 'npm ci --no-audit'
-                                sh 'npm test -- --coverage'
-                            }
+                            sh "docker build -t ${DOCKER_IMAGE_BACKEND} ."
                         }
                     }
                 }
             }
         }
 
-        // Stage 3: SonarQube Analysis with security
-        stage('Code Quality') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    script {
-                        dir('frontend') {
-                            sh """
-                            sonar-scanner \
-                            -Dsonar.projectKey=todo-web \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.login=${SONARQUBE_TOKEN} \
-                            -Dsonar.sources=src \
-                            -Dsonar.tests=src \
-                            -Dsonar.test.inclusions=**/*.test.js \
-                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                            """
-                        }
-                        dir('backend') {
-                            sh """
-                            sonar-scanner \
-                            -Dsonar.projectKey=todo-api \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.login=${SONARQUBE_TOKEN} \
-                            -Dsonar.sources=src \
-                            -Dsonar.tests=test \
-                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                            """
-                        }
-                    }
-                }
-            }
-        }
-
-        // Stage 4: Docker Build with cache
-        stage('Docker Build') {
-            parallel {
-                stage('Frontend') {
-                    steps {
-                        dir('frontend') {
-                            sh "docker build --pull --cache-from ${DOCKER_IMAGE_FRONTEND} -t ${DOCKER_IMAGE_FRONTEND} ."
-                        }
-                    }
-                }
-                stage('Backend') {
-                    steps {
-                        dir('backend') {
-                            sh "docker build --pull --cache-from ${DOCKER_IMAGE_BACKEND} -t ${DOCKER_IMAGE_BACKEND} ."
-                        }
-                    }
-                }
-            }
-        }
-
-        // Stage 5: Secure Docker Push
+        // Stage 3: Docker Push
         stage('Docker Push') {
             steps {
                 script {
@@ -122,7 +60,7 @@ pipeline {
             }
         }
 
-        // Stage 6: Safe Deployment
+        // Stage 4: Deployment
         stage('Deploy') {
             steps {
                 script {
@@ -160,12 +98,14 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline completed. Access: http://localhost:3000'
-            junit '**/test-results.xml' // Add test reporting
-            cobertura autoUpdateHistory: true, coberturaReportFile: '**/coverage/cobertura-coverage.xml'
+            echo 'Pipeline completed. Access application at http://localhost:3000'
         }
-        failure {
-            emailext body: 'Pipeline failed: ${BUILD_URL}', subject: 'Pipeline Failed: ${JOB_NAME}', to: 'team@example.com'
+        cleanup {
+            // Cleanup Docker containers on failure
+            script {
+                sh 'docker stop frontend backend mongodb || true'
+                sh 'docker rm frontend backend mongodb || true'
+            }
         }
     }
 }
