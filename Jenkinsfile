@@ -20,7 +20,7 @@ pipeline {
                 retry(3) {
                     git branch: 'main', 
                          url: 'https://github.com/bhanreddy1973/Todo-Web.git',
-                         time: 2 // Minutes
+                        //  time: 2 // Minutes
                 }
             }
         }
