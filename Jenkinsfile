@@ -9,11 +9,16 @@ pipeline {
     }
 
     stages {
-        // Stage 1: Checkout Code
+        // Stage 1: Checkout Code with Retry
         stage('Checkout') {
             steps {
                 deleteDir()
-                git branch: 'main', url: 'https://github.com/bhanreddy1973/Todo-Web.git'
+                retry(5) {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        git branch: 'main', 
+                             url: 'https://github.com/bhanreddy1973/Todo-Web.git'
+                    }
+                }
             }
         }
 
