@@ -6,8 +6,9 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        // Short path for docker-compose.exe (adjust if necessary)
-        DOCKER_COMPOSE_PATH = 'C:\Program Files\Docker\Docker\resources\bin\compose-bridge.exe'
+        // Path to compose-bridge.exe (using short path if needed)
+        // You MUST verify this short path on your Jenkins agent!
+        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\compose-bridge.exe'
     }
 
     stages {
@@ -17,8 +18,8 @@ pipeline {
                 deleteDir()
                 retry(5) {
                     timeout(time: 5, unit: 'MINUTES') {
-                        git branch: 'main', 
-                             url: 'https://github.com/bhanreddy1973/Todo-Web.git'
+                        git branch: 'main',
+                            url: 'https://github.com/bhanreddy1973/Todo-Web.git'
                     }
                 }
             }
