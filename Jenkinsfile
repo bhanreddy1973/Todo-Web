@@ -6,9 +6,9 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        // Path to docker-compose.exe (using short path for robustness)
+        // Path to compose-bridge.exe (using short path if needed)
         // You MUST verify this short path on your Jenkins agent!
-        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe'
+        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\compose-bridge.exe'
     }
 
     stages {
@@ -30,8 +30,7 @@ pipeline {
             steps {
                 // Use bat for Windows compatibility
                 bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" build
+                call ${DOCKER_COMPOSE_PATH} build
                 """
             }
         }
@@ -46,8 +45,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         bat """
-                        @echo off
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
                         docker push ${DOCKER_IMAGE_FRONTEND}:latest
@@ -65,9 +63,8 @@ pipeline {
                 script {
                     // Cleanup previous deployment and start fresh environment
                     bat """
-                    @echo off
-                    call "%DOCKER_COMPOSE_PATH%" down || true
-                    call "%DOCKER_COMPOSE_PATH%" up -d
+                    call ${DOCKER_COMPOSE_PATH} down || true
+                    call ${DOCKER_COMPOSE_PATH} up -d
                     """
                 }
             }
@@ -81,8 +78,7 @@ pipeline {
         cleanup {
             script {
                 bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" down || true
+                call ${DOCKER_COMPOSE_PATH} down || true
                 """
             }
         }
