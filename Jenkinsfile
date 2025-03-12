@@ -11,7 +11,7 @@ pipeline {
         DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe'
         // SonarQube Configuration
         SONAR_HOST_URL    = "http://localhost:9000"
-        SONAR_TOKEN       = "sqp_8a9277d337d6a57582b2d29490082f0578832a56" // Replace with your SonarQube token
+        // SONAR_TOKEN       = "your_sonarqube_token" // Use Jenkins Credentials instead!
         SONAR_SCANNER_HOME = tool 'SonarScanner' // Ensure you have SonarScanner tool configured in Jenkins
     }
 
@@ -62,16 +62,24 @@ pipeline {
         // Stage 4: SonarQube Analysis
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('todo-web') { // SonarQube project key
-                    bat """
-                    @echo off
-                    cd web-service
-                    ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner -Dsonar.host.url=${env.SONAR_HOST_URL} -Dsonar.login=${env.SONAR_TOKEN}
-                    cd ..
-                    cd worker-service
-                    ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner -Dsonar.host.url=${env.SONAR_HOST_URL} -Dsonar.login=${env.SONAR_TOKEN}
-                    cd ..
-                    """
+                withSonarQubeEnv('SonarQube') { // Ensure 'SonarQube' matches the name configured in Jenkins
+                    script {
+                        bat """
+                        @echo off
+                        cd web-service
+                        ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner ^
+                            -Dsonar.projectKey=todo-web-frontend ^
+                            -Dsonar.host.url=${env.SONAR_HOST_URL} ^
+                            -Dsonar.login=${SONAR_TOKEN}
+                        cd ..
+                        cd worker-service
+                        ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner ^
+                            -Dsonar.projectKey=todo-web-backend ^
+                            -Dsonar.host.url=${env.SONAR_HOST_URL} ^
+                            -Dsonar.login=${SONAR_TOKEN}
+                        cd ..
+                        """
+                    }
                 }
             }
         }
