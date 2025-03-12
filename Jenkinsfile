@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS_20' // Requires NodeJS plugin configured in Jenkins
-    }
-
     environment {
         // SonarQube Configuration
         SONARQUBE_SERVER = 'SonarQube'
@@ -24,7 +20,7 @@ pipeline {
                 retry(3) {
                     git branch: 'main', 
                          url: 'https://github.com/bhanreddy1973/Todo-Web.git',
-                        //  timeout: 2 // Minutes
+                         time: 2 // Minutes
                 }
             }
         }
