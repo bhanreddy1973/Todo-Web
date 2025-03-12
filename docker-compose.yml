@@ -1,25 +1,25 @@
+version: '3.8'
+
 services:
   web-service:
     build:
-      context: ./frontend
+      context: ./web-service
     container_name: bhanu-bcd26-web-service
     ports:
       - "8083:3000"
     depends_on:
       - worker-service
-    environment:
-      - REACT_APP_API_URL=http://worker-service:5000
 
   worker-service:
     build:
-      context: ./backend
+      context: ./worker-service
     container_name: bhanu-bcd26-worker-service
     ports:
-      - "5000:5000"
+      - "4001:4001"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/todo_db
     depends_on:
       - mongo
-    environment:
-      - MONGO_URI=mongodb://mongo:27017/todo
 
   mongo:
     image: mongo
