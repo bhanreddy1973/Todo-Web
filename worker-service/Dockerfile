@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 4001
 
-CMD ["node", "server.js"]
+CMD ["npx", "serve", "-s", "build"]
