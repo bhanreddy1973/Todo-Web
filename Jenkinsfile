@@ -27,7 +27,7 @@ pipeline {
         stage('Build') {
             steps {
                 bat """
-                ${DOCKER_COMPOSE_PATH} build
+                ${DOCKER_COMPOSE_PATH} build --no-cache
                 """
             }
         }
