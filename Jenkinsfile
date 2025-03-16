@@ -26,7 +26,7 @@ pipeline {
         // Stage 2: Build Docker Images
         stage('Build') {
             steps {
-                sh """
+                bat """
                 ${DOCKER_COMPOSE_PATH} build
                 """
             }
@@ -36,8 +36,8 @@ pipeline {
         stage('Testing Frontend') {
             steps {
                 dir('web-service') {
-                    sh 'npm install'
-                    sh 'npm run test'
+                    bat 'npm install'
+                    bat 'npm run test'
                 }
             }
             post {
@@ -51,8 +51,8 @@ pipeline {
         stage('Testing Backend') {
             steps {
                 dir('worker-service') {
-                    sh 'npm install'
-                    sh 'npm run test'
+                    bat 'npm install'
+                    bat 'npm run test'
                 }
             }
             post {
@@ -71,7 +71,7 @@ pipeline {
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
-                        sh """
+                        bat """
                         echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
@@ -87,7 +87,7 @@ pipeline {
         // Stage 6: Deployment
         stage('Deploy') {
             steps {
-                sh """
+                bat """
                 ${DOCKER_COMPOSE_PATH} down || true
                 ${DOCKER_COMPOSE_PATH} up -d
                 """
@@ -100,7 +100,7 @@ pipeline {
             echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
-            sh """
+            bat """
             ${DOCKER_COMPOSE_PATH} down || true
             """
         }
