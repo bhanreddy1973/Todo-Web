@@ -6,13 +6,11 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        // Path to compose-bridge.exe (using short path if needed)
-        // You MUST verify this short path on your Jenkins agent!
-        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\compose-bridge.exe'
+        DOCKER_COMPOSE_CMD = 'docker compose'
     }
 
     stages {
-        // Stage 1: Checkout Code with Retry
+        // Stage 1: Checkout Code
         stage('Checkout') {
             steps {
                 deleteDir()
@@ -25,18 +23,34 @@ pipeline {
             }
         }
 
-        // Stage 2: Build Docker Images
-        stage('Build') {
+        // Stage 2: Install Dependencies
+        stage('Install Dependencies') {
             steps {
-                // Use bat for Windows compatibility
                 bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" build
+                npm install jquery
                 """
             }
         }
 
-        // Stage 3: Docker Push
+        // Stage 3: Build Docker Images
+        stage('Build') {
+            steps {
+                bat """
+                ${DOCKER_COMPOSE_CMD} build
+                """
+            }
+        }
+
+        // Stage 4: Run Code Analysis with jQuery
+        stage('Code Analysis') {
+            steps {
+                bat """
+                node_modules/.bin/jquery --analyze src/
+                """
+            }
+        }
+
+        // Stage 5: Docker Push
         stage('Docker Push') {
             steps {
                 script {
@@ -58,17 +72,13 @@ pipeline {
             }
         }
 
-        // Stage 4: Deployment
+        // Stage 6: Deployment
         stage('Deploy') {
             steps {
-                script {
-                    // Cleanup previous deployment and start fresh environment
-                    bat """
-                    @echo off
-                    call "%DOCKER_COMPOSE_PATH%" down || true
-                    call "%DOCKER_COMPOSE_PATH%" up -d
-                    """
-                }
+                bat """
+                ${DOCKER_COMPOSE_CMD} down --remove-orphans || true
+                ${DOCKER_COMPOSE_CMD} up -d
+                """
             }
         }
     }
@@ -78,16 +88,7 @@ pipeline {
             echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
-            script {
-                bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" down || true
-                """
-            }
+            bat "${DOCKER_COMPOSE_CMD} down"
         }
     }
 }
-
-
-
-
