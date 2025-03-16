@@ -5,7 +5,7 @@ pipeline {
         // Docker Configuration
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
-        DOCKER_IMAGE_MONGO = 'mongo'
+        DOCKER_COMPOSE_PATH = 'docker-compose'
     }
 
     stages {
@@ -22,11 +22,11 @@ pipeline {
             }
         }
 
-        // Stage 2: Build Docker Images
-        stage('Build') {
+        // Stage 2: Build Individual Docker Images
+        stage('Build Images') {
             steps {
                 bat """
-                docker-compose build --no-cache
+                ${DOCKER_COMPOSE_PATH} build --no-cache web-service worker-service
                 """
             }
         }
@@ -71,7 +71,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         bat """
-                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
                         docker push ${DOCKER_IMAGE_FRONTEND}:latest
@@ -83,12 +83,12 @@ pipeline {
             }
         }
 
-        // Stage 6: Deployment
+        // Stage 6: Deployment using Docker Compose Up
         stage('Deploy') {
             steps {
                 bat """
-                docker-compose down || true
-                docker-compose up -d
+                ${DOCKER_COMPOSE_PATH} down || true
+                ${DOCKER_COMPOSE_PATH} up -d web-service worker-service mongo
                 """
             }
         }
@@ -100,7 +100,7 @@ pipeline {
         }
         cleanup {
             bat """
-            docker-compose down || true
+            ${DOCKER_COMPOSE_PATH} down || true
             """
         }
     }

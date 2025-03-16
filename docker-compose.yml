@@ -5,24 +5,26 @@ services:
     build:
       context: ./web-service
     container_name: bhanu-bcd26-web-service
+    image: bhanureddy1973/todo-app-frontend:latest
     ports:
-      - "8083:3000"
+      - "8083:3000"  # Host:Container (Access frontend on host port 8083)
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
-      worker-service:
-        condition: service_healthy
+      - worker-service
     restart: unless-stopped
 
   worker-service:
     build:
       context: ./worker-service
     container_name: bhanu-bcd26-worker-service
+    image: bhanureddy1973/todo-app-backend:latest
     ports:
-      - "4001:4001"
+      - "4001:4001"  # Host:Container (Access backend on host port 4001)
     environment:
       - MONGO_URI=mongodb://mongo:27017/todo_db
     depends_on:
-      mongo:
-        condition: service_healthy
+      - mongo
     restart: unless-stopped
 
   mongo:
@@ -33,11 +35,6 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.runCommand('ping').ok"]
-      interval: 10s
-      timeout: 10s
-      retries: 3
 
 volumes:
   mongo_data:
