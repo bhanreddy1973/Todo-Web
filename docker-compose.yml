@@ -9,6 +9,7 @@ services:
       - "8083:3000"
     depends_on:
       - worker-service
+    restart: unless-stopped
 
   worker-service:
     build:
@@ -20,6 +21,7 @@ services:
       - MONGO_URI=mongodb://mongo:27017/todo_db
     depends_on:
       - mongo
+    restart: unless-stopped
 
   mongo:
     image: mongo
@@ -28,6 +30,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    restart: unless-stopped
 
 volumes:
   mongo_data:
