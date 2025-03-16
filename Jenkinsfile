@@ -6,7 +6,6 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        DOCKER_COMPOSE_PATH = 'docker-compose'
     }
 
     stages {
@@ -27,7 +26,7 @@ pipeline {
         stage('Build') {
             steps {
                 bat """
-                ${DOCKER_COMPOSE_PATH} build --no-cache
+                docker-compose build --no-cache
                 """
             }
         }
@@ -72,7 +71,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                        docker login -u %DOCKER_USER% -p %DOCKER_PASS%
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
                         docker push ${DOCKER_IMAGE_FRONTEND}:latest
@@ -88,8 +87,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 bat """
-                ${DOCKER_COMPOSE_PATH} down || true
-                ${DOCKER_COMPOSE_PATH} up -d
+                docker-compose down || true
+                docker-compose up -d
                 """
             }
         }
@@ -101,7 +100,7 @@ pipeline {
         }
         cleanup {
             bat """
-            ${DOCKER_COMPOSE_PATH} down || true
+            docker-compose down || true
             """
         }
     }

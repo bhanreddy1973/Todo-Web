@@ -12,4 +12,4 @@ RUN npm run build
 
 EXPOSE 3000
 
-CMD ["npx", "serve", "-s", "build"]
+CMD ["npx", "--no-install", "serve", "-s", "build"]
