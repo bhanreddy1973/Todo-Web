@@ -5,7 +5,10 @@ pipeline {
         // Docker Configuration
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
-        DOCKER_COMPOSE_PATH = 'docker-compose'
+        DOCKER_IMAGE_MONGO = 'mongo'
+        // Path to compose-bridge.exe (using short path if needed)
+        // You MUST verify this short path on your Jenkins agent!
+        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\compose-bridge.exe'
     }
 
     stages {
@@ -22,22 +25,27 @@ pipeline {
             }
         }
 
-        // Stage 2: Build Individual Docker Images
-        stage('Build Images') {
+        // Stage 2: Build Docker Images
+        stage('Build') {
             steps {
+                // Use bat for Windows compatibility
                 bat """
-                ${DOCKER_COMPOSE_PATH} build --no-cache web-service worker-service
+                @echo off
+                call "%DOCKER_COMPOSE_PATH%" build
                 """
             }
         }
-
-        // Stage 3: Testing - Frontend
+      // Stage 3: Testing - Frontend
         stage('Testing Frontend') {
             steps {
                 dir('web-service') {
-                    bat 'npm install'
-                    // Run tests *after* building the image
-                    bat 'npm run test'
+                    bat """
+                    @echo off
+                    echo Running npm install in web-service
+                    npm install
+                    echo Running tests in web-service
+                    npm test
+                    """
                 }
             }
             post {
@@ -51,9 +59,13 @@ pipeline {
         stage('Testing Backend') {
             steps {
                 dir('worker-service') {
-                    bat 'npm install'
-                     // Run tests *after* building the image
-                    bat 'npm run test'
+                    bat """
+                    @echo off
+                    echo Running npm install in worker-service
+                    npm install
+                    echo Running tests in worker-service
+                    npm test
+                    """
                 }
             }
             post {
@@ -85,13 +97,17 @@ pipeline {
             }
         }
 
-        // Stage 6: Deployment using Docker Compose Up
+        // Stage 6: Deployment
         stage('Deploy') {
             steps {
-                bat """
-                ${DOCKER_COMPOSE_PATH} down || true
-                ${DOCKER_COMPOSE_PATH} up -d web-service worker-service mongo
-                """
+                script {
+                    // Cleanup previous deployment and start fresh environment
+                    bat """
+                    @echo off
+                    call "%DOCKER_COMPOSE_PATH%" down || true
+                    call "%DOCKER_COMPOSE_PATH%" up -d
+                    """
+                }
             }
         }
     }
@@ -101,9 +117,12 @@ pipeline {
             echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
-            bat """
-            ${DOCKER_COMPOSE_PATH} down || true
-            """
+            script {
+                bat """
+                @echo off
+                call "%DOCKER_COMPOSE_PATH%" down || true
+                """
+            }
         }
     }
 }
