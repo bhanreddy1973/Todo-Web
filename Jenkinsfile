@@ -36,6 +36,7 @@ pipeline {
             steps {
                 dir('web-service') {
                     bat 'npm install'
+                    // Run tests *after* building the image
                     bat 'npm run test'
                 }
             }
@@ -51,6 +52,7 @@ pipeline {
             steps {
                 dir('worker-service') {
                     bat 'npm install'
+                     // Run tests *after* building the image
                     bat 'npm run test'
                 }
             }
