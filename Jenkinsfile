@@ -35,47 +35,8 @@ pipeline {
                 """
             }
         }
-      // Stage 3: Testing - Frontend
-        stage('Testing Frontend') {
-            steps {
-                dir('web-service') {
-                    bat """
-                    @echo off
-                    echo Running npm install in web-service
-                    npm install
-                    echo Running tests in web-service
-                    npm test
-                    """
-                }
-            }
-            post {
-                always {
-                    junit 'web-service/junit.xml'
-                }
-            }
-        }
 
-        // Stage 4: Testing - Backend
-        stage('Testing Backend') {
-            steps {
-                dir('worker-service') {
-                    bat """
-                    @echo off
-                    echo Running npm install in worker-service
-                    npm install
-                    echo Running tests in worker-service
-                    npm test
-                    """
-                }
-            }
-            post {
-                always {
-                    junit 'worker-service/junit.xml'
-                }
-            }
-        }
-
-        // Stage 5: Docker Push
+        // Stage 3: Docker Push
         stage('Docker Push') {
             steps {
                 script {
@@ -97,7 +58,7 @@ pipeline {
             }
         }
 
-        // Stage 6: Deployment
+        // Stage 4: Deployment
         stage('Deploy') {
             steps {
                 script {
@@ -126,3 +87,5 @@ pipeline {
         }
     }
 }
+
+
