@@ -1,43 +1,83 @@
-require('dotenv').config(); 
-const express = require('express'); 
-const cors = require('cors'); 
-const mongoose = require('mongoose'); 
+// worker-service/test/server.test.js
 
-//Execute express 
-const app = express(); 
+const request = require('supertest');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server'); // For in-memory MongoDB
+const app = require('../server'); // Your Express app
+const Todo = require('../models/Todo'); // Your Todo model
 
-//Middlewares
-app.use(express.json()); 
-app.use(cors()); 
+describe('Todo API Tests', () => {
+    let mongoServer;
 
-const port = 4001; 
+    beforeAll(async () => {
+        // Start an in-memory MongoDB server
+        mongoServer = await MongoMemoryServer.create();
+        const mongoUri = mongoServer.getUri();
+
+        // Connect to the in-memory MongoDB
+        await mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
+    });
+
+    afterAll(async () => {
+        // Disconnect from MongoDB and stop the in-memory server
+        await mongoose.disconnect();
+        await mongoServer.stop();
+    });
+
+    beforeEach(async () => {
+        // Clear the database before each test
+        await Todo.deleteMany({});
+    });
+
+    it('should respond to the GET request with an empty array initially', async () => {
+        const response = await request(app).get('/todo');
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual([]); // Initially, there should be no todos
+    });
+
+    it('should create a new todo and respond with the created todo', async () => {
+        const newTodo = { name: 'Test Todo', completed: false };
+        const response = await request(app)
+            .post('/todo/new')
+            .send(newTodo);
+
+        expect(response.statusCode).toBe(201);
+        expect(response.body.newTask).toHaveProperty('_id');
+        expect(response.body.newTask.name).toBe(newTodo.name);
+        expect(response.body.newTask.completed).toBe(newTodo.completed);
+
+        // Verify that the todo was actually created in the database
+        const todo = await Todo.findById(response.body.newTask._id);
+        expect(todo).not.toBeNull();
+        expect(todo.name).toBe(newTodo.name);
+    });
 
 
-const connectionString = process.env.MONGO_URI; 
-mongoose.connect(connectionString)
-        .then(() => console.log('Connected to the database…')) 
-        .catch((err) => console.error('Connection error:', err));
+    it('should retrieve all todos', async () => {
+        // Create some todos first
+        const todo1 = await Todo.create({ name: 'Todo 1', completed: false });
+        const todo2 = await Todo.create({ name: 'Todo 2', completed: true });
 
-const Todo = require('./models/Todo');
+        const response = await request(app).get('/todo');
+        expect(response.statusCode).toBe(200);
+        expect(response.body.length).toBe(2); // Two todos should be returned
 
+        // Check that the todos match the ones created
+        expect(response.body.some(todo => todo._id === todo1._id.toString() && todo.name === todo1.name)).toBe(true);
+        expect(response.body.some(todo => todo._id === todo2._id.toString() && todo.name === todo2.name)).toBe(true);
+    });
 
-// Routes
+    it('should delete a todo', async () => {
+        // First, create a todo
+        const newTodo = await Todo.create({ name: 'Todo to delete', completed: false });
 
-app.get('/todo', async (req, res) => { 
-    const todos = await Todo.find(); 
-    res.json(todos); });
+        const response = await request(app).delete(`/todo/delete/${newTodo._id}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body._id).toBe(newTodo._id.toString()); // Check that the deleted todo's ID is returned
 
-app.post('/todo/new', async (req,res) => {
-        const newTask = await Todo.create(req.body);
-        res.status(201).json({newTask})
-    })
+        // Verify that the todo is actually deleted from the database
+        const todo = await Todo.findById(newTodo._id);
+        expect(todo).toBeNull(); // The todo should not exist anymore
+    });
 
-app.delete('/todo/delete/:id', async(req,res)=>{
-        const result = await Todo.findByIdAndDelete(req.params.id)
-        res.json(result)
-    })
-
-
-
-
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+});

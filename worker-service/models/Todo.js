@@ -1,9 +1,18 @@
-//Require mongoose
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 
-//Create schema contains a single field named 'name.' 
-//The 'name' field is of type String
-const TodoSchema = new mongoose.Schema({ name: String }); 
+const TodoSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    completed: {
+        type: Boolean,
+        default: false
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
+    }
+});
 
-//Export the Mongoose model with the collection name "Todo"
 module.exports = mongoose.model('Todo', TodoSchema);

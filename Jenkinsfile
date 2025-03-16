@@ -6,7 +6,7 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = 'bhanureddy1973/todo-app-frontend'
         DOCKER_IMAGE_BACKEND = 'bhanureddy1973/todo-app-backend'
         DOCKER_IMAGE_MONGO = 'mongo'
-        DOCKER_COMPOSE_PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\compose-bridge.exe'
+        DOCKER_COMPOSE_PATH = 'docker-compose'
     }
 
     stages {
@@ -26,25 +26,43 @@ pipeline {
         // Stage 2: Build Docker Images
         stage('Build') {
             steps {
-                bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" build
+                sh """
+                ${DOCKER_COMPOSE_PATH} build
                 """
             }
         }
 
-        // Stage 3: Testing with jQuery and Code Analysis
-        stage('Testing') {
+        // Stage 3: Testing - Frontend
+        stage('Testing Frontend') {
             steps {
-                bat """
-                @echo off
-                npm install jquery eslint --save-dev
-                node_modules/.bin/eslint src/ --fix || true
-                """
+                dir('web-service') {
+                    sh 'npm install'
+                    sh 'npm run test'
+                }
+            }
+            post {
+                always {
+                    junit 'web-service/junit.xml'
+                }
             }
         }
 
-        // Stage 4: Docker Push
+        // Stage 4: Testing - Backend
+        stage('Testing Backend') {
+            steps {
+                dir('worker-service') {
+                    sh 'npm install'
+                    sh 'npm run test'
+                }
+            }
+            post {
+                always {
+                    junit 'worker-service/junit.xml'
+                }
+            }
+        }
+
+        // Stage 5: Docker Push
         stage('Docker Push') {
             steps {
                 script {
@@ -53,7 +71,7 @@ pipeline {
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
-                        bat """
+                        sh """
                         echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                         docker tag ${DOCKER_IMAGE_FRONTEND} ${DOCKER_IMAGE_FRONTEND}:latest
                         docker tag ${DOCKER_IMAGE_BACKEND} ${DOCKER_IMAGE_BACKEND}:latest
@@ -66,16 +84,13 @@ pipeline {
             }
         }
 
-        // Stage 5: Deployment
+        // Stage 6: Deployment
         stage('Deploy') {
             steps {
-                script {
-                    bat """
-                    @echo off
-                    call "%DOCKER_COMPOSE_PATH%" down || true
-                    call "%DOCKER_COMPOSE_PATH%" up -d
-                    """
-                }
+                sh """
+                ${DOCKER_COMPOSE_PATH} down || true
+                ${DOCKER_COMPOSE_PATH} up -d
+                """
             }
         }
     }
@@ -85,12 +100,9 @@ pipeline {
             echo 'Pipeline completed. Access application at http://localhost:8083'
         }
         cleanup {
-            script {
-                bat """
-                @echo off
-                call "%DOCKER_COMPOSE_PATH%" down || true
-                """
-            }
+            sh """
+            ${DOCKER_COMPOSE_PATH} down || true
+            """
         }
     }
 }
