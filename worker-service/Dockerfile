@@ -19,3 +19,4 @@ EXPOSE 4001
 
 # Start the backend
 CMD ["node", "server.js"]
+
