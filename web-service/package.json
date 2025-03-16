@@ -1,9 +1,8 @@
 {
   "name": "web-service",
-  "version": "0.1.0", // Add a version if it's missing
+  "version": "0.1.0",
   "private": true,
   "dependencies": {
-    // Your production dependencies here (e.g., react, react-dom)
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
@@ -11,22 +10,22 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^28.0.0", // or a later version you prefer
+    "jest": "^28.0.0",
     "jest-junit": "^16.0.0"
   },
   "scripts": {
-    "start": "react-scripts start", // Or your start script
-    "build": "react-scripts build",   // Or your build script
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "jest --config jest.config.js",
-    "eject": "react-scripts eject"    // If using Create React App
+    "eject": "react-scripts eject"
   },
-  "eslintConfig": { // If you have an ESLint configuration
+  "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
     ]
   },
-  "browserslist": { // If you have browserslist configuration
+  "browserslist": {
     "production": [
       ">0.2%",
       "not dead",
