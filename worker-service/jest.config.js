@@ -1,15 +1,12 @@
-// worker-service/jest.config.js
-
 module.exports = {
-    testEnvironment: 'node',
-    collectCoverageFrom: [
-      '**/*.js',         // Include all JavaScript files
-      '!**/node_modules/**', // Exclude node_modules
-      '!**/test/**',      // Exclude test directory
-    ],
-    reporters: [
-      'default',
-      ['jest-junit', { outputDirectory: '.', outputName: 'junit.xml' }],
-    ],
-  };
-  
+  collectCoverage: true,
+  collectCoverageFrom: [
+    "**/*.js",
+    "!**/node_modules/**",
+    "!**/coverage/**",
+    "!jest.config.js"
+  ],
+  coverageReporters: ["lcov", "text", "html"],
+  testEnvironment: "node",
+  testMatch: ["**/__tests__/**/*.js", "**/?(*.)+(spec|test).js"]
+};
